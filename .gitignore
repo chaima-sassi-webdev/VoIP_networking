@@ -1,0 +1,27 @@
+.env
+node_modules/
+index.js.backup-*
+
+# Environment and secrets
+.env.*
+!.env.example
+
+# Backup files
+*.backup
+*.backup-*
+asterisk_serve_inspect_backup.json
+sauvegarde-asterisk/
+
+# Logs and temporary files
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+
+# Frontend backups
+public/*.backup*
+
+# Asterisk configuration: may contain credentials
+config-asterisk/*.conf
+config-asterisk/*backup*.json

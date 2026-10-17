@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Supervision VoIP | Dashboard</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome -->
+    <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"
+    >
+
+    <style>
+        body {
+            background: #020617;
+            color: #e2e8f0;
+            font-family: Arial, sans-serif;
+        }
+
+        .dashboard-card {
+            background: #0f172a;
+            border: 1px solid #1e293b;
+            border-radius: 14px;
+            padding: 24px;
+        }
+
+        #logs-container {
+            min-height: 180px;
+            max-height: 420px;
+            overflow-y: auto;
+        }
+
+        .log-entry {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            padding: 12px;
+            margin-bottom: 8px;
+            border: 1px solid #1e293b;
+            border-radius: 8px;
+            background: #0f172a;
+            overflow-wrap: anywhere;
+        }
+
+        .call-card {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 12px;
+            padding: 18px;
+            min-width: 0;
+        }
+
+        .status-indicator {
+            width: 9px;
+            height: 9px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 7px;
+        }
+
+        .status-online {
+            background: #10b981;
+            box-shadow: 0 0 8px #10b981;
+        }
+
+        .status-ringing {
+            background: #f59e0b;
+        }
+
+        .status-offline {
+            background: #64748b;
+        }
+
+        .call-number {
+            overflow-wrap: anywhere;
+        }
+
+        button {
+            transition: background-color 0.2s ease;
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- ==================== EN-TÊTE ==================== -->
+
+    <header class="bg-slate-900 border-b border-slate-800">
+        <div class="max-w-7xl mx-auto px-6 py-5
+                    flex flex-col md:flex-row
+                    justify-between items-center gap-4">
+
+            <div>
+                <h1 class="text-2xl font-bold text-white">
+                    <i class="fa-solid fa-headset text-indigo-400 mr-2"></i>
+                    Supervision VoIP
+                </h1>
+
+                <p class="text-sm text-slate-400 mt-2">
+                    Surveillance des appels Asterisk en temps réel
+                </p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span
+                    id="connection-dot"
+                    class="h-3 w-3 rounded-full bg-amber-500"
+                ></span>
+
+                <span
+                    id="connection-text"
+                    class="text-sm text-slate-300"
+                    aria-live="polite"
+                >
+                    Connexion au backend...
+                </span>
+            </div>
+
+        </div>
+    </header>
+
+
+    <!-- ==================== CONTENU PRINCIPAL ==================== -->
+
+    <main class="max-w-7xl mx-auto p-6">
+
+        <!-- STATISTIQUES -->
+
+        <section class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-6">
+
+            <!-- Appels actifs -->
+
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center">
+
+                    <div>
+                        <p class="text-sm text-slate-400">
+                            Appels actifs
+                        </p>
+
+                        <p
+                            id="stat-active"
+                            class="text-4xl font-bold text-indigo-400 mt-3"
+                        >
+                            0
+                        </p>
+
+                        <p class="text-xs text-slate-500 mt-2">
+                            Appels actuellement détectés
+                        </p>
+                    </div>
+
+                    <div class="text-indigo-400 text-3xl">
+                        <i class="fa-solid fa-phone-volume"></i>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <!-- Total des appels -->
+
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center">
+
+                    <div>
+                        <p class="text-sm text-slate-400">
+                            Appels enregistrés
+                        </p>
+
+                        <p
+                            id="stat-total"
+                            class="text-4xl font-bold text-emerald-400 mt-3"
+                        >
+                            0
+                        </p>
+
+                        <p class="text-xs text-slate-500 mt-2">
+                            Appels chargés depuis MongoDB
+                        </p>
+                    </div>
+
+                    <div class="text-emerald-400 text-3xl">
+                        <i class="fa-solid fa-database"></i>
+                    </div>
+
+                </div>
+            </div>
+
+
+            <!-- État de la connexion -->
+
+            <div class="dashboard-card">
+                <div class="flex justify-between items-center">
+
+                    <div>
+                        <p class="text-sm text-slate-400">
+                            Connexion serveur
+                        </p>
+
+                        <p
+                            id="server-status"
+                            class="text-xl font-bold text-amber-400 mt-3"
+                        >
+                            Vérification...
+                        </p>
+
+                        <p class="text-xs text-slate-500 mt-2">
+                            Socket.IO
+                        </p>
+                    </div>
+
+                    <div class="text-amber-400 text-3xl">
+                        <i class="fa-solid fa-server"></i>
+                    </div>
+
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- ÉTAT DE LA SUPERVISION -->
+
+        <section class="dashboard-card mb-6">
+
+            <h2 class="text-lg font-bold mb-4">
+                <i class="fa-solid fa-chart-line text-indigo-400 mr-2"></i>
+                État de la supervision
+            </h2>
+
+            <p class="text-sm text-slate-400">
+                État actuel des communications :
+            </p>
+
+            <p
+                id="agent-status"
+                class="text-lg font-semibold text-slate-300 mt-3"
+                aria-live="polite"
+            >
+                En attente d'un appel
+            </p>
+
+            <p
+                id="last-update"
+                class="text-xs text-slate-500 mt-3"
+            >
+                Dernière mise à jour : en attente
+            </p>
+
+        </section>
+
+
+        <!-- APPELS EN DIRECT -->
+
+        <section class="dashboard-card mb-6">
+
+            <div class="flex flex-col sm:flex-row
+                        justify-between items-start sm:items-center
+                        gap-3 mb-5">
+
+                <div>
+                    <h2 class="text-lg font-bold">
+                        <i class="fa-solid fa-phone-volume text-indigo-400 mr-2"></i>
+                        Appels en direct
+                    </h2>
+
+                    <p class="text-sm text-slate-400 mt-2">
+                        Appels internes et appels SVI détectés par Asterisk.
+                    </p>
+                </div>
+
+                <span
+                    id="active-badge"
+                    class="text-xs px-3 py-2 rounded-full
+                           bg-slate-800 text-slate-300
+                           border border-slate-700"
+                >
+                    0 appel actif
+                </span>
+
+            </div>
+
+            <div
+                id="live-call-box"
+                class="bg-slate-950 border border-slate-800
+                       rounded-xl p-5"
+                aria-live="polite"
+            >
+                <div class="text-center py-6">
+
+                    <i class="fa-solid fa-phone-slash
+                              text-3xl text-slate-600"></i>
+
+                    <p class="text-slate-400 mt-3">
+                        Aucun appel en direct détecté.
+                    </p>
+
+                </div>
+            </div>
+
+        </section>
+
+
+        <!-- HISTORIQUE DES APPELS -->
+
+        <section class="dashboard-card">
+
+            <div class="flex flex-col sm:flex-row
+                        justify-between items-start sm:items-center
+                        gap-3 mb-4">
+
+                <div>
+                    <h2 class="text-lg font-bold">
+                        <i class="fa-solid fa-clock-rotate-left
+                                  text-indigo-400 mr-2"></i>
+                        Historique des appels
+                    </h2>
+
+                    <p class="text-sm text-slate-400 mt-2">
+                        Historique chargé depuis MongoDB.
+                    </p>
+                </div>
+
+                <div class="flex gap-2">
+
+                    <button
+                        id="refresh-history-button"
+                        type="button"
+                        class="text-xs text-white bg-indigo-600
+                               hover:bg-indigo-500 px-3 py-2 rounded-lg"
+                    >
+                        <i class="fa-solid fa-rotate mr-1"></i>
+                        Actualiser
+                    </button>
+
+                    <button
+                        id="clear-logs-button"
+                        type="button"
+                        class="text-xs text-slate-300 bg-slate-800
+                               hover:bg-slate-700 px-3 py-2 rounded-lg
+                               border border-slate-700"
+                    >
+                        <i class="fa-solid fa-trash mr-1"></i>
+                        Effacer
+                    </button>
+
+                </div>
+
+            </div>
+
+
+            <!-- Filtres -->
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+
+                <input
+                    id="search-calls"
+                    type="search"
+                    placeholder="Rechercher un numéro..."
+                    class="w-full bg-slate-950 border border-slate-700
+                           rounded-lg px-3 py-2 text-sm text-white
+                           focus:outline-none focus:border-indigo-500"
+                    aria-label="Rechercher un appel"
+                >
+
+                <select
+                    id="filter-status"
+                    class="w-full bg-slate-950 border border-slate-700
+                           rounded-lg px-3 py-2 text-sm text-white
+                           focus:outline-none focus:border-indigo-500"
+                    aria-label="Filtrer les appels par statut"
+                >
+                    <option value="all">Tous les statuts</option>
+                    <option value="ANSWERED">Appels répondus</option>
+                    <option value="NO ANSWER">Sans réponse</option>
+                    <option value="BUSY">Occupé</option>
+                    <option value="FAILED">Échec</option>
+                </select>
+
+            </div>
+
+
+            <!-- Tableau -->
+
+            <div class="overflow-x-auto">
+
+                <table class="w-full text-sm text-left">
+
+                    <thead class="text-xs uppercase bg-slate-950 text-slate-400">
+                        <tr>
+                            <th class="px-4 py-3">Heure</th>
+                            <th class="px-4 py-3">Appelant</th>
+                            <th class="px-4 py-3">Destination</th>
+                            <th class="px-4 py-3">Statut</th>
+                            <th class="px-4 py-3">Durée</th>
+                        </tr>
+                    </thead>
+
+                    <tbody id="history-table-body">
+
+                        <tr>
+                            <td
+                                colspan="5"
+                                class="px-4 py-6 text-center text-slate-500"
+                            >
+                                Chargement de l'historique...
+                            </td>
+                        </tr>
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            <p
+                id="history-message"
+                class="text-xs text-slate-500 mt-4"
+                aria-live="polite"
+            ></p>
+
+        </section>
+
+
+        <!-- JOURNAL D'ACTIVITÉ -->
+
+        <section class="dashboard-card mt-6">
+
+            <div class="flex justify-between items-center gap-3 mb-4">
+
+                <h2 class="text-lg font-bold">
+                    <i class="fa-solid fa-list text-indigo-400 mr-2"></i>
+                    Journal d'activité
+                </h2>
+
+                <span class="text-xs text-slate-500">
+                    Événements du dashboard
+                </span>
+
+            </div>
+
+            <div
+                id="logs-container"
+                class="bg-slate-950 border border-slate-800
+                       rounded-lg p-4"
+                aria-live="polite"
+            >
+                <div class="text-slate-500 italic">
+                    Initialisation de la supervision...
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+
+    <!-- PIED DE PAGE -->
+
+    <footer class="text-center text-xs text-slate-500 py-6">
+        Supervision VoIP — Asterisk, Node.js, Socket.IO et MongoDB
+    </footer>
+
+
+    <!-- Socket.IO -->
+
+    <script src="/socket.io/socket.io.js"></script>
+
+
+    <script>
+        // ==================================================
+        // 1. CONNEXION ET ÉLÉMENTS HTML
+        // ==================================================
+
+        const socket = io();
+
+        const connectionDot =
+            document.getElementById('connection-dot');
+
+        const connectionText =
+            document.getElementById('connection-text');
+
+        const serverStatus =
+            document.getElementById('server-status');
+
+        const logsContainer =
+            document.getElementById('logs-container');
+
+        const liveCallBox =
+            document.getElementById('live-call-box');
+
+        const statActive =
+            document.getElementById('stat-active');
+
+        const statTotal =
+            document.getElementById('stat-total');
+
+        const activeBadge =
+            document.getElementById('active-badge');
+
+        const agentStatus =
+            document.getElementById('agent-status');
+
+        const lastUpdate =
+            document.getElementById('last-update');
+
+        const historyTableBody =
+            document.getElementById('history-table-body');
+
+        const historyMessage =
+            document.getElementById('history-message');
+
+        const searchCalls =
+            document.getElementById('search-calls');
+
+        const filterStatus =
+            document.getElementById('filter-status');
+
+        const clearLogsButton =
+            document.getElementById('clear-logs-button');
+
+        const refreshHistoryButton =
+            document.getElementById('refresh-history-button');
+
+
+        // ==================================================
+        // 2. VARIABLES
+        // ==================================================
+
+        // Historique actuellement chargé depuis l'API.
+        let historyCalls = [];
+
+        // Appels actifs reçus du backend.
+        let activeCalls = [];
+
+        // IDs des CDR déjà affichés dans le journal.
+        const seenCallIds = new Set();
+
+        // IDs des appels actifs dont le démarrage a déjà été journalisé.
+        const seenActiveCallIds = new Set();
+
+        // Limiter la taille du journal à l'écran.
+        const MAX_LOG_ENTRIES = 150;
+
+
+        // ==================================================
+        // 3. OUTILS
+        // ==================================================
+
+        function safeText(value, fallback = 'Inconnu') {
+            if (value === null || value === undefined || value === '') {
+                return fallback;
+            }
+
+            return String(value);
+        }
+
+
+        function formatTime(value) {
+            if (!value) {
+                return '—';
+            }
+
+            let date;
+
+            // Les startedAt des appels actifs sont des timestamps
+            // en millisecondes. Les dates CDR peuvent être des chaînes.
+            if (typeof value === 'number' || /^\d+$/.test(String(value))) {
+                const numericValue = Number(value);
+
+                // Les timestamps Unix en secondes ont généralement
+                // 10 chiffres, ceux en millisecondes 13.
+                date = new Date(
+                    numericValue < 100000000000
+                        ? numericValue * 1000
+                        : numericValue
+                );
+            } else {
+                date = new Date(value);
+            }
+
+            if (Number.isNaN(date.getTime())) {
+                return safeText(value, '—');
+            }
+
+            return date.toLocaleString('fr-FR');
+        }
+
+
+        function formatDuration(value) {
+            const seconds = Math.max(0, Number(value) || 0);
+
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const remainingSeconds = Math.floor(seconds % 60);
+
+            if (hours > 0) {
+                return `${hours} h ${minutes} min ${remainingSeconds} s`;
+            }
+
+            if (minutes > 0) {
+                return `${minutes} min ${remainingSeconds} s`;
+            }
+
+            return `${remainingSeconds} s`;
+        }
+
+
+        function normalizeStatus(status) {
+            return safeText(status, 'UNKNOWN')
+                .trim()
+                .toUpperCase();
+        }
+
+
+        function getStatusClasses(status) {
+            const normalized = normalizeStatus(status);
+
+            if (
+                normalized === 'ANSWERED' ||
+                normalized.includes('COMMUNICATION') ||
+                normalized === 'UP'
+            ) {
+                return 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30';
+            }
+
+            if (
+                normalized.includes('RING') ||
+                normalized.includes('SONNERIE') ||
+                normalized.includes('NO ANSWER') ||
+                normalized.includes('NON RÉPONDU')
+            ) {
+                return 'bg-amber-500/10 text-amber-400 border-amber-500/30';
+            }
+
+            if (
+                normalized === 'BUSY' ||
+                normalized === 'FAILED' ||
+                normalized.includes('ÉCHEC')
+            ) {
+                return 'bg-rose-500/10 text-rose-400 border-rose-500/30';
+            }
+
+            return 'bg-slate-700/50 text-slate-300 border-slate-600';
+        }
+
+
+        // ==================================================
+        // 4. JOURNAL D'ACTIVITÉ
+        // ==================================================
+
+        function addLog(message, type = 'info', timestamp = null) {
+            // Supprimer le message initial.
+            if (
+                logsContainer.children.length === 1 &&
+                logsContainer.children[0].classList.contains('italic')
+            ) {
+                logsContainer.replaceChildren();
+            }
+
+            const entry = document.createElement('div');
+            entry.className = 'log-entry';
+
+            const time = document.createElement('span');
+            time.className = 'text-xs text-slate-500 shrink-0 mt-1';
+            time.textContent = timestamp
+                ? formatTime(timestamp)
+                : new Date().toLocaleTimeString('fr-FR');
+
+            const badge = document.createElement('span');
+            badge.className =
+                'text-xs px-2 py-1 rounded border uppercase font-bold shrink-0';
+
+            if (type === 'success') {
+                badge.classList.add(
+                    'bg-emerald-500/10',
+                    'text-emerald-400',
+                    'border-emerald-500/20'
+                );
+            } else if (type === 'error') {
+                badge.classList.add(
+                    'bg-rose-500/10',
+                    'text-rose-400',
+                    'border-rose-500/20'
+                );
+            } else if (type === 'warning') {
+                badge.classList.add(
+                    'bg-amber-500/10',
+                    'text-amber-400',
+                    'border-amber-500/20'
+                );
+            } else {
+                badge.classList.add(
+                    'bg-indigo-500/10',
+                    'text-indigo-400',
+                    'border-indigo-500/20'
+                );
+            }
+
+            badge.textContent = type;
+
+            const messageElement = document.createElement('span');
+            messageElement.className = 'text-sm text-slate-300 break-all';
+            messageElement.textContent = String(message);
+
+            entry.append(time, badge, messageElement);
+            logsContainer.prepend(entry);
+
+            while (logsContainer.children.length > MAX_LOG_ENTRIES) {
+                logsContainer.lastElementChild.remove();
+            }
+        }
+
+
+        // ==================================================
+        // 5. HISTORIQUE DES APPELS
+        // ==================================================
+
+        function renderHistory() {
+            const query = searchCalls.value.trim().toLowerCase();
+            const selectedStatus = filterStatus.value;
+
+            const filteredCalls = historyCalls.filter((call) => {
+                const caller = safeText(call.caller, '').toLowerCase();
+                const destination =
+                    safeText(call.destination, '').toLowerCase();
+
+                const matchesSearch =
+                    !query ||
+                    caller.includes(query) ||
+                    destination.includes(query);
+
+                const status = normalizeStatus(call.status);
+
+                const matchesStatus =
+                    selectedStatus === 'all' ||
+                    status === selectedStatus;
+
+                return matchesSearch && matchesStatus;
+            });
+
+            historyTableBody.replaceChildren();
+
+            if (filteredCalls.length === 0) {
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+
+                cell.colSpan = 5;
+                cell.className =
+                    'px-4 py-6 text-center text-slate-500';
+
+                cell.textContent = historyCalls.length === 0
+                    ? 'Aucun appel enregistré.'
+                    : 'Aucun résultat pour ces filtres.';
+
+                row.appendChild(cell);
+                historyTableBody.appendChild(row);
+
+                historyMessage.textContent =
+                    `0 résultat sur ${historyCalls.length} appel(s).`;
+
+                return;
+            }
+
+            filteredCalls.forEach((call) => {
+                const row = document.createElement('tr');
+
+                row.className =
+                    'border-b border-slate-800 hover:bg-slate-800/50';
+
+                const timeCell = document.createElement('td');
+                timeCell.className = 'px-4 py-3 text-slate-400 whitespace-nowrap';
+                timeCell.textContent = formatTime(call.timestamp);
+
+                const callerCell = document.createElement('td');
+                callerCell.className = 'px-4 py-3 text-white call-number';
+                callerCell.textContent = safeText(call.caller);
+
+                const destinationCell = document.createElement('td');
+                destinationCell.className = 'px-4 py-3 text-white call-number';
+                destinationCell.textContent = safeText(call.destination);
+
+                const statusCell = document.createElement('td');
+                statusCell.className = 'px-4 py-3';
+
+                const statusBadge = document.createElement('span');
+                statusBadge.className =
+                    `inline-block px-2 py-1 rounded border text-xs ${getStatusClasses(call.status)}`;
+                statusBadge.textContent = safeText(call.status, 'UNKNOWN');
+
+                statusCell.appendChild(statusBadge);
+
+                const durationCell = document.createElement('td');
+                durationCell.className = 'px-4 py-3 text-slate-300 whitespace-nowrap';
+                durationCell.textContent = formatDuration(call.duration);
+
+                row.append(
+                    timeCell,
+                    callerCell,
+                    destinationCell,
+                    statusCell,
+                    durationCell
+                );
+
+                historyTableBody.appendChild(row);
+            });
+
+            historyMessage.textContent =
+                `${filteredCalls.length} résultat(s) affiché(s) sur ` +
+                `${historyCalls.length} appel(s) chargé(s).`;
+        }
+
+
+        function updateTotalCalls() {
+            statTotal.textContent = String(historyCalls.length);
+        }
+
+
+        async function loadCallHistory() {
+            historyMessage.textContent = 'Chargement de l’historique...';
+
+            try {
+                const response = await fetch('/api/calls', {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP ${response.status}`);
+                }
+
+                const calls = await response.json();
+
+                if (!Array.isArray(calls)) {
+                    throw new Error(
+                        'La réponse de /api/calls n’est pas un tableau.'
+                    );
+                }
+
+                historyCalls = calls;
+
+                // Alimenter le journal sans afficher plusieurs fois
+                // les CDR déjà reçus via Socket.IO.
+                historyCalls.forEach((call) => {
+                    const id = call.uniqueid
+                        ? String(call.uniqueid)
+                        : null;
+
+                    if (id && seenCallIds.has(id)) {
+                        return;
+                    }
+
+                    if (id) {
+                        seenCallIds.add(id);
+                    }
+
+                    addLog(
+                        `Historique : ${safeText(call.caller)} → ` +
+                        `${safeText(call.destination)} | ` +
+                        `Statut : ${safeText(call.status)}`,
+                        normalizeStatus(call.status) === 'ANSWERED'
+                            ? 'success'
+                            : 'info',
+                        call.timestamp
+                    );
+                });
+
+                updateTotalCalls();
+                renderHistory();
+
+                addLog(
+                    `${historyCalls.length} appel(s) chargé(s) depuis MongoDB.`,
+                    'success'
+                );
+
+                console.log(
+                    'Historique récupéré depuis MongoDB :',
+                    historyCalls.length
+                );
+
+            } catch (error) {
+                console.error('Erreur historique :', error);
+
+                historyTableBody.replaceChildren();
+
+                const row = document.createElement('tr');
+                const cell = document.createElement('td');
+
+                cell.colSpan = 5;
+                cell.className =
+                    'px-4 py-6 text-center text-rose-400';
+
+                cell.textContent =
+                    'Impossible de charger l’historique. Vérifiez le backend.';
+
+                row.appendChild(cell);
+                historyTableBody.appendChild(row);
+
+                historyMessage.textContent =
+                    'La requête vers /api/calls a échoué.';
+
+                addLog(
+                    'Erreur lors du chargement de l’historique MongoDB.',
+                    'error'
+                );
+            }
+        }
+
+
+        function displayCall(call) {
+            if (!call) {
+                return;
+            }
+
+            const id = call.uniqueid
+                ? String(call.uniqueid)
+                : null;
+
+            if (id && seenCallIds.has(id)) {
+                // Le CDR est déjà dans le journal.
+            } else {
+                if (id) {
+                    seenCallIds.add(id);
+                }
+
+                addLog(
+                    `Appel terminé : ${safeText(call.caller)} → ` +
+                    `${safeText(call.destination)} | ` +
+                    `Statut : ${safeText(call.status)} | ` +
+                    `Durée : ${formatDuration(call.duration)}`,
+                    normalizeStatus(call.status) === 'ANSWERED'
+                        ? 'success'
+                        : 'info',
+                    call.timestamp
+                );
+            }
+
+            // Ajouter ou remplacer le CDR dans l'historique local.
+            if (id) {
+                const index = historyCalls.findIndex(
+                    item => String(item.uniqueid) === id
+                );
+
+                if (index >= 0) {
+                    historyCalls[index] = {
+                        ...historyCalls[index],
+                        ...call
+                    };
+                } else {
+                    historyCalls.unshift(call);
+                }
+            } else {
+                historyCalls.unshift(call);
+            }
+
+            updateTotalCalls();
+            renderHistory();
+        }
+
+
+        // ==================================================
+        // 6. AFFICHAGE DES APPELS ACTIFS
+        // ==================================================
+
+        function renderActiveCalls(payload) {
+            /*
+             * Le backend Socket.IO transmet :
+             * { count: nombre, calls: [...] }
+             *
+             * La route HTTP /api/active-calls transmet :
+             * [...]
+             */
+
+            const calls = Array.isArray(payload)
+                ? payload
+                : Array.isArray(payload?.calls)
+                    ? payload.calls
+                    : [];
+
+            activeCalls = calls;
+
+            // Le nombre affiché provient de la liste réellement reçue.
+            statActive.textContent = String(activeCalls.length);
+
+            activeBadge.textContent =
+                `${activeCalls.length} appel${activeCalls.length > 1 ? 's' : ''} actif${activeCalls.length > 1 ? 's' : ''}`;
+
+            lastUpdate.textContent =
+                `Dernière mise à jour : ${new Date().toLocaleTimeString('fr-FR')}`;
+
+            if (activeCalls.length === 0) {
+                agentStatus.textContent = 'En attente d’un appel';
+
+                agentStatus.className =
+                    'text-lg font-semibold text-slate-300 mt-3';
+
+            } else {
+                agentStatus.textContent =
+                    `${activeCalls.length} appel(s) détecté(s)`;
+
+                agentStatus.className =
+                    'text-lg font-semibold text-green-400 mt-3';
+            }
+
+            liveCallBox.replaceChildren();
+
+            if (activeCalls.length === 0) {
+                const emptyState = document.createElement('div');
+                emptyState.className = 'text-center py-6';
+
+                const icon = document.createElement('div');
+                icon.className = 'text-slate-500 text-3xl mb-3';
+                icon.innerHTML = '<i class="fa-solid fa-phone-slash"></i>';
+
+                const message = document.createElement('p');
+                message.className = 'text-slate-400';
+                message.textContent = 'Aucun appel en direct détecté.';
+
+                emptyState.append(icon, message);
+                liveCallBox.appendChild(emptyState);
+
+                return;
+            }
+
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4';
+
+            activeCalls.forEach((call) => {
+                const card = document.createElement('article');
+                card.className = 'call-card';
+
+                const type = safeText(call.type, 'Appel');
+                const isSvi = type.toLowerCase().includes('svi');
+
+                const caller = safeText(call.caller);
+                const destination = safeText(call.destination);
+                const status = safeText(call.status, 'En cours');
+
+                const heading = document.createElement('div');
+                heading.className = 'flex justify-between items-center gap-3 mb-4';
+
+                const title = document.createElement('h3');
+                title.className = 'font-bold text-white';
+
+                const titleIcon = document.createElement('i');
+                titleIcon.className = isSvi
+                    ? 'fa-solid fa-headset text-indigo-400 mr-2'
+                    : 'fa-solid fa-phone-volume text-indigo-400 mr-2';
+
+                title.appendChild(titleIcon);
+                title.appendChild(document.createTextNode(
+                    isSvi ? 'Appel SVI' : 'Appel interne'
+                ));
+
+                const statusBadge = document.createElement('span');
+                statusBadge.className =
+                    `text-xs px-2 py-1 rounded border ${getStatusClasses(status)}`;
+                statusBadge.textContent = status;
+
+                heading.append(title, statusBadge);
+
+                const participants = document.createElement('div');
+                participants.className =
+                    'bg-slate-950 rounded-lg p-3 mb-3';
+
+                const callerLine = document.createElement('p');
+                callerLine.className = 'text-sm text-slate-300 call-number';
+                callerLine.textContent = `Appelant : ${caller}`;
+
+                const destinationLine = document.createElement('p');
+                destinationLine.className = 'text-sm text-slate-300 mt-2 call-number';
+                destinationLine.textContent = `Destination : ${destination}`;
+
+                participants.append(callerLine, destinationLine);
+
+                const typeLine = document.createElement('p');
+                typeLine.className = 'text-xs text-slate-400 mt-2';
+                typeLine.textContent = `Type : ${type}`;
+
+                card.append(heading, participants, typeLine);
+
+                if (call.channel || call.channelName) {
+                    const channel = document.createElement('p');
+                    channel.className = 'text-xs text-slate-500 mt-2';
+                    channel.textContent =
+                        `Canal : ${call.channel || call.channelName}`;
+                    card.appendChild(channel);
+                }
+
+                if (call.startedAt) {
+                    const start = document.createElement('p');
+                    start.className = 'text-xs text-slate-500 mt-2';
+                    start.textContent =
+                        `Début : ${formatTime(call.startedAt)}`;
+                    card.appendChild(start);
+                }
+
+                grid.appendChild(card);
+
+                // Journaliser une seule fois le début d'un appel
+                // pour les appels qui possèdent un identifiant stable.
+                const activeId = call.id || call.channelId;
+
+                if (
+                    activeId &&
+                    !seenActiveCallIds.has(String(activeId))
+                ) {
+                    seenActiveCallIds.add(String(activeId));
+
+                    addLog(
+                        `Appel actif détecté : ${caller} → ${destination} (${type})`,
+                        'info'
+                    );
+                }
+            });
+
+            liveCallBox.appendChild(grid);
+        }
+
+
+        // ==================================================
+        // 7. SYNCHRONISATION DES APPELS ACTIFS
+        // ==================================================
+
+        async function loadActiveCalls() {
+            try {
+                const response = await fetch('/api/active-calls', {
+                    cache: 'no-store'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Erreur HTTP ${response.status}`);
+                }
+
+                const calls = await response.json();
+
+                if (!Array.isArray(calls)) {
+                    throw new Error(
+                        'La réponse de /api/active-calls n’est pas un tableau.'
+                    );
+                }
+
+                renderActiveCalls(calls);
+
+            } catch (error) {
+                console.error(
+                    'Impossible de récupérer les appels actifs :',
+                    error
+                );
+
+                addLog(
+                    'Impossible de récupérer les appels actifs depuis le backend.',
+                    'error'
+                );
+            }
+        }
+
+
+        // ==================================================
+        // 8. ÉVÉNEMENTS SOCKET.IO
+        // ==================================================
+
+        socket.on('connect', () => {
+            console.log('Socket.IO connecté :', socket.id);
+
+            connectionDot.className =
+                'h-3 w-3 rounded-full bg-emerald-500';
+
+            connectionText.textContent = 'Connecté au backend';
+
+            serverStatus.textContent = 'Connecté';
+            serverStatus.className =
+                'text-xl font-bold text-emerald-400 mt-3';
+
+            addLog(
+                'Connexion au serveur de supervision établie.',
+                'success'
+            );
+
+            // Synchroniser l'état réel après une connexion
+            // ou une reconnexion du navigateur.
+            loadActiveCalls();
+        });
+
+
+        socket.on('disconnect', (reason) => {
+            console.warn('Socket.IO déconnecté :', reason);
+
+            connectionDot.className =
+                'h-3 w-3 rounded-full bg-rose-500';
+
+            connectionText.textContent = 'Déconnecté';
+
+            serverStatus.textContent = 'Déconnecté';
+            serverStatus.className =
+                'text-xl font-bold text-rose-400 mt-3';
+
+            addLog(
+                `Déconnexion du backend : ${reason}`,
+                'error'
+            );
+        });
+
+
+        socket.on('connect_error', (error) => {
+            console.error('Erreur Socket.IO :', error.message);
+
+            connectionDot.className =
+                'h-3 w-3 rounded-full bg-rose-500';
+
+            connectionText.textContent = 'Erreur de connexion';
+
+            serverStatus.textContent = 'Erreur';
+            serverStatus.className =
+                'text-xl font-bold text-rose-400 mt-3';
+        });
+
+
+        // Nouveau CDR enregistré dans MongoDB.
+        socket.on('call_logged', (call) => {
+            console.log('Nouvel appel enregistré :', call);
+            displayCall(call);
+        });
+
+
+        // Événement de début d'appel SVI via ARI.
+        // L'affichage des appels actifs reste centralisé dans
+        // active_calls_updated pour éviter les compteurs incorrects.
+        socket.on('call_started', (data) => {
+            console.log('Appel SVI détecté :', data);
+
+            addLog(
+                `Début d'appel SVI depuis ${safeText(data?.caller)}`,
+                'info'
+            );
+        });
+
+
+        // Événement de fin d'appel SVI.
+        socket.on('call_ended', (data) => {
+            console.log('Fin d’appel SVI :', data);
+
+            addLog(
+                'Fin d’un appel SVI.',
+                'info'
+            );
+
+            // Ne pas mettre le compteur à zéro manuellement :
+            // d'autres appels peuvent toujours être actifs.
+            loadActiveCalls();
+        });
+
+
+        // Événement principal pour l'affichage en temps réel.
+        socket.on('active_calls_updated', (payload) => {
+            console.log(
+                'Mise à jour des appels actifs :',
+                payload
+            );
+
+            renderActiveCalls(payload);
+        });
+
+
+        // ==================================================
+        // 9. FILTRES ET BOUTONS
+        // ==================================================
+
+        searchCalls.addEventListener('input', renderHistory);
+
+        filterStatus.addEventListener('change', renderHistory);
+
+
+        refreshHistoryButton.addEventListener('click', () => {
+            loadCallHistory();
+            loadActiveCalls();
+        });
+
+
+        clearLogsButton.addEventListener('click', () => {
+            logsContainer.replaceChildren();
+
+            const message = document.createElement('div');
+            message.className = 'text-slate-500 italic';
+            message.textContent =
+                'Journal visuel effacé. Les appels restent enregistrés dans MongoDB.';
+
+            logsContainer.appendChild(message);
+        });
+
+
+        // ==================================================
+        // 10. INITIALISATION
+        // ==================================================
+
+        loadCallHistory();
+        loadActiveCalls();
+
+    </script>
+
+</body>
+</html>
